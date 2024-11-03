@@ -12,19 +12,33 @@ endfunction ()
 
 target_add_sources(fluorine "include/fluorine/"
     # Header files here
-    "export.h"
+    "core/board.h"
+    "core/macros.h"
 )
 
 target_add_sources(fluorine "src/"
     # Source files here (relative to ./src/)
-    "dummy.cpp"
+    "arena/random_player.cpp"
+    "core/board.cpp"
+    "core/game.cpp"
+    "evaluation/endgame_solver.cpp"
+    "evaluation/transposition_table.cpp"
+    "utils/tui.cpp"
 )
 
-# find_package(fmt CONFIG REQUIRED)
+find_package(clu CONFIG REQUIRED)
 
 target_set_options(fluorine PRIVATE)
 target_set_warnings(fluorine PRIVATE)
 target_set_cxx_std(fluorine)
+
+if (FLUORINE_ENABLE_AVX2)
+    if (MSVC)
+        target_compile_options(fluorine PRIVATE /arch:AVX2)
+    else ()
+        target_compile_options(fluorine PRIVATE -mavx2)
+    endif ()
+endif ()
 
 if (BUILD_SHARED_LIBS)
     target_compile_definitions(fluorine
@@ -39,9 +53,8 @@ PUBLIC
 )
 target_link_libraries(fluorine
 PUBLIC
-    # fmt::fmt
+    clu::clu
 )
-
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(

@@ -1,15 +1,14 @@
 {
-  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
-  "name": "fluorine",
-  "version-string": "0.1.0",
-  "dependencies": [],
-  "features": {
-    "build-tests": {
-      "description": "Build unit tests",
-      "dependencies": [
-        "catch2"
-      ]
+    "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+    "name": "fluorine",
+    "version-string": "0.1.0",
+    "dependencies": [ "clu" ],
+    "features": {
+        "build-tests": {
+            "description": "Build unit tests",
+            "dependencies": [
+                "catch2"
+            ]
+        }
     }
-  },
-  "builtin-baseline": "7adc2e4d49e8d0efc07a369079faa6bc3dbb90f3"
 }

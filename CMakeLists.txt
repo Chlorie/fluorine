@@ -15,6 +15,8 @@ option(BUILD_SHARED_LIBS "Build library as shared library" OFF)
 
 add_subdirectory(lib)
 
+option(FLUORINE_ENABLE_AVX2 "Enable AVX2 instructions" ON)
+
 option(FLUORINE_BUILD_EXAMPLES "Build code examples" ON)
 if (FLUORINE_BUILD_EXAMPLES)
     add_subdirectory(examples)

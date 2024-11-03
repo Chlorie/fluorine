@@ -1,0 +1,17 @@
+{
+	"$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg-configuration.schema.json",
+	"default-registry": {
+		"kind": "builtin",
+		"baseline": "7adc2e4d49e8d0efc07a369079faa6bc3dbb90f3"
+	},
+	"registries": [
+		{
+			"kind": "git",
+			"baseline": "169c2607293b8f77494cfd4ad2e16f9f08936102",
+			"repository": "https://github.com/Chlorie/vcpkg-ports",
+			"packages": [
+				"clu"
+			]
+		}
+	]
+}
