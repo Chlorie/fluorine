@@ -35,11 +35,11 @@ namespace flr
     public:
         TranspositionTable(): data_(table_size) {}
 
-        [[nodiscard]] static std::size_t hash(const Board& board, int lookahead);
-        void store(const Board& board, int lookahead, Bounds bounds) noexcept;
-        void store(const Board& board, int lookahead, Bounds bounds, std::size_t hash_hint) noexcept;
-        [[nodiscard]] const Bounds* try_load(const Board& board, int lookahead) const noexcept;
-        [[nodiscard]] const Bounds* try_load(const Board& board, int lookahead, std::size_t hash_hint) const noexcept;
+        [[nodiscard]] static std::size_t hash(const Board& board);
+        void store(const Board& board, int depth, Bounds bounds) noexcept;
+        void store(const Board& board, int depth, Bounds bounds, std::size_t hash_hint) noexcept;
+        [[nodiscard]] const Bounds* try_load(const Board& board, int min_depth) const noexcept;
+        [[nodiscard]] const Bounds* try_load(const Board& board, int min_depth, std::size_t hash_hint) const noexcept;
         void clear() noexcept { std::ranges::fill(data_, Entry{}); }
         [[nodiscard]] std::size_t size() const noexcept;
 
@@ -54,7 +54,7 @@ namespace flr
         struct State final
         {
             Board board{.black = 0, .white = 0}; // Intended zero init
-            int lookahead = 0;
+            int depth = 0;
         };
 
         struct Entry final

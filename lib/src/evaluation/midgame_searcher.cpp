@@ -9,19 +9,10 @@ namespace flr
 {
     namespace
     {
-        constexpr int max_move_ordering_depth = 4;
         constexpr int min_negascout_depth = 4;
 
-        auto generate_moves(GameRecord& record, const BitBoard move_mask, const bool sort_moves) noexcept
+        auto generate_moves(GameRecord& record, const BitBoard move_mask) noexcept
         {
-            using MoveVec = clu::static_vector<Coords, cell_count>;
-            if (!sort_moves)
-            {
-                MoveVec moves;
-                for (const int move : SetBits{move_mask})
-                    moves.emplace_back(static_cast<Coords>(move));
-                return moves;
-            }
             clu::static_vector<std::pair<Coords, int>, cell_count> weighted_moves;
             for (const int bit : SetBits{move_mask})
             {
@@ -32,7 +23,7 @@ namespace flr
                 record.undo();
             }
             std::ranges::sort(weighted_moves, std::less{}, &std::pair<Coords, int>::second);
-            MoveVec res;
+            clu::static_vector<Coords, cell_count> res;
             for (const auto move : weighted_moves | std::views::keys)
                 res.emplace_back(static_cast<Coords>(move));
             return res;
@@ -60,7 +51,7 @@ namespace flr
         if (state.legal_moves == 0)
         {
             record_.play(Coords::none);
-            const float score = -negascout(-inf, inf, depth, false);
+            const float score = -negascout(-inf, inf, depth, true);
             return {.traversed_nodes = nodes_, .score = score, .move = Coords::none};
         }
         SolveResult res{};
@@ -96,9 +87,10 @@ namespace flr
             record_.undo();
             return score;
         }
-        for (const auto move : generate_moves(record_, moves, false))
+        for (const auto move : SetBits{moves})
         {
-            record_.play(move);
+            const Coords move_coords = static_cast<Coords>(move);
+            record_.play(move_coords);
             const float score = -negamax(-beta, -alpha, depth - 1, false);
             record_.undo();
             if (score > alpha)
@@ -117,7 +109,7 @@ namespace flr
             return negamax(alpha, beta, depth, passed);
         nodes_++;
         const GameState state = record_.current_canonical();
-        const std::size_t hash = TranspositionTable::hash(state.board, depth);
+        const std::size_t hash = TranspositionTable::hash(state.board);
         Bounds bounds{};
         if (const Bounds* ptr = tt_.try_load(state.board, depth, hash))
         {
@@ -156,7 +148,7 @@ namespace flr
             add_tt_entry();
             return score;
         }
-        for (const Coords move : generate_moves(record_, moves, true))
+        for (const Coords move : generate_moves(record_, moves))
         {
             record_.play(move);
             const float lower = std::max(alpha, score);

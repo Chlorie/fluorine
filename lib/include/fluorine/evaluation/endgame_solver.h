@@ -33,8 +33,9 @@ namespace flr
         GameRecord record_;
         TranspositionTable tt_;
 
-        float negamax(float alpha, float beta, int depth, bool passed);
-        float negascout(float alpha, float beta, int depth, bool passed);
+        int negamax(int alpha, int beta, int depth, bool passed);
+        int negamax_last(bool passed);
+        int negascout(int alpha, int beta, int depth, bool passed);
     };
 } // namespace flr
 

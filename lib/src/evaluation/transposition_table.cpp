@@ -4,35 +4,34 @@
 
 namespace flr
 {
-    std::size_t TranspositionTable::hash(const Board& board, const int lookahead)
+    std::size_t TranspositionTable::hash(const Board& board)
     {
         clu::fnv1a_hasher hasher;
         hasher.update(clu::trivial_buffer(board));
-        hasher.update(clu::trivial_buffer(lookahead));
         return hasher.finalize() & (table_size - 1);
     }
 
-    void TranspositionTable::store(const Board& board, const int lookahead, const Bounds bounds) noexcept
+    void TranspositionTable::store(const Board& board, const int depth, const Bounds bounds) noexcept
     {
-        store(board, lookahead, bounds, hash(board, lookahead));
+        store(board, depth, bounds, hash(board));
     }
 
     void TranspositionTable::store(
-        const Board& board, const int lookahead, const Bounds bounds, const std::size_t hash_hint) noexcept
+        const Board& board, const int depth, const Bounds bounds, const std::size_t hash_hint) noexcept
     {
-        data_[hash_hint] = {.state = {board, lookahead}, .bounds = bounds};
+        data_[hash_hint] = {.state = {board, depth}, .bounds = bounds};
     }
 
-    const Bounds* TranspositionTable::try_load(const Board& board, const int lookahead) const noexcept
+    const Bounds* TranspositionTable::try_load(const Board& board, const int min_depth) const noexcept
     {
-        return try_load(board, lookahead, hash(board, lookahead));
+        return try_load(board, min_depth, hash(board));
     }
 
     const Bounds* TranspositionTable::try_load(
-        const Board& board, const int lookahead, const std::size_t hash_hint) const noexcept
+        const Board& board, const int min_depth, const std::size_t hash_hint) const noexcept
     {
         const auto& pair = data_[hash_hint];
-        if (pair.state.board != board || pair.state.lookahead != lookahead)
+        if (pair.state.board != board || pair.state.depth < min_depth)
             return nullptr;
         return &pair.bounds;
     }
