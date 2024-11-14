@@ -50,10 +50,22 @@ namespace flr
             return "Pass";
         char res[3]{};
         const int i = static_cast<int>(coords);
-        const int r = static_cast<int>(i / board_length), c = static_cast<int>(i % board_length);
+        const int r = i / static_cast<int>(board_length), c = i % static_cast<int>(board_length);
         res[0] = static_cast<char>('A' + c);
         res[1] = static_cast<char>('1' + r);
         return std::string(res);
+    }
+
+    Coords parse_coords(const std::string_view str)
+    {
+        if (str.size() != 2)
+            return Coords::none;
+        if (str[1] < '1' || str[1] > '8')
+            return Coords::none;
+        if ((str[0] < 'A' || str[0] > 'H') && (str[0] < 'a' || str[0] > 'h'))
+            return Coords::none;
+        const int r = str[1] - '1', c = str[0] >= 'a' ? str[0] - 'a' : str[0] - 'A';
+        return static_cast<Coords>(r * static_cast<int>(board_length) + c);
     }
 
     Board Board::read(const std::string_view repr, const char black, const char white, const char space)
@@ -62,7 +74,7 @@ namespace flr
         if (repr.size() != cell_count)
             error();
         Board board = empty;
-        for (int i = 0; i < cell_count; i++)
+        for (std::size_t i = 0; i < cell_count; i++)
         {
             if (const auto c = repr[i]; c == black)
                 board.black |= 1ull << i;

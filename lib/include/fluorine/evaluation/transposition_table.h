@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <limits>
+#include <algorithm>
+#include <ranges>
 
 #include "fluorine/core/board.h"
 
@@ -19,6 +21,13 @@ namespace flr
         constexpr Bounds() noexcept: lower(-inf), upper(inf) {}
         constexpr explicit(false) Bounds(const float value) noexcept: lower(value), upper(value) {}
         constexpr Bounds(const float l, const float u) noexcept: lower(l), upper(u) {}
+
+        [[nodiscard]] constexpr float error(const float predicted) const noexcept
+        {
+            return lower > predicted ? predicted - lower //
+                : upper < predicted  ? predicted - upper
+                                     : 0.0f;
+        }
     };
 
     class FLUORINE_API TranspositionTable final
@@ -26,13 +35,20 @@ namespace flr
     public:
         TranspositionTable(): data_(table_size) {}
 
-        static std::size_t hash(const Board& board, int lookahead);
+        [[nodiscard]] static std::size_t hash(const Board& board, int lookahead);
         void store(const Board& board, int lookahead, Bounds bounds) noexcept;
         void store(const Board& board, int lookahead, Bounds bounds, std::size_t hash_hint) noexcept;
-        const Bounds* try_load(const Board& board, int lookahead) const noexcept;
-        const Bounds* try_load(const Board& board, int lookahead, std::size_t hash_hint) const noexcept;
-        void clear() noexcept;
-        std::size_t size() noexcept;
+        [[nodiscard]] const Bounds* try_load(const Board& board, int lookahead) const noexcept;
+        [[nodiscard]] const Bounds* try_load(const Board& board, int lookahead, std::size_t hash_hint) const noexcept;
+        void clear() noexcept { std::ranges::fill(data_, Entry{}); }
+        [[nodiscard]] std::size_t size() const noexcept;
+
+        [[nodiscard]] auto entries() const noexcept
+        {
+            return data_ //
+                | std::views::filter([](const Entry& entry) { return entry.state.board != Board::empty; }) //
+                | std::views::transform([](const Entry& entry) { return std::pair(entry.state.board, entry.bounds); });
+        }
 
     private:
         struct State final
@@ -41,14 +57,14 @@ namespace flr
             int lookahead = 0;
         };
 
-        struct Pair final
+        struct Entry final
         {
             State state;
             Bounds bounds;
         };
 
         static constexpr std::size_t table_size = 1 << 20;
-        std::vector<Pair> data_;
+        std::vector<Entry> data_;
     };
 } // namespace flr
 

@@ -19,14 +19,20 @@ target_add_sources(fluorine "include/fluorine/"
 target_add_sources(fluorine "src/"
     # Source files here (relative to ./src/)
     "arena/random_player.cpp"
+    "arena/searching_player.cpp"
     "core/board.cpp"
     "core/game.cpp"
     "evaluation/endgame_solver.cpp"
+    "evaluation/evaluator.cpp"
+    "evaluation/linear_pattern_evaluator.cpp"
+    "evaluation/midgame_searcher.cpp"
     "evaluation/transposition_table.cpp"
+    "evaluation/training.cpp"
     "utils/tui.cpp"
 )
 
 find_package(clu CONFIG REQUIRED)
+find_package(xsimd CONFIG REQUIRED)
 
 target_set_options(fluorine PRIVATE)
 target_set_warnings(fluorine PRIVATE)
@@ -36,7 +42,7 @@ if (FLUORINE_ENABLE_AVX2)
     if (MSVC)
         target_compile_options(fluorine PRIVATE /arch:AVX2)
     else ()
-        target_compile_options(fluorine PRIVATE -mavx2)
+        target_compile_options(fluorine PRIVATE -mavx2 -mbmi2)
     endif ()
 endif ()
 
@@ -54,6 +60,8 @@ PUBLIC
 target_link_libraries(fluorine
 PUBLIC
     clu::clu
+PRIVATE
+    xsimd
 )
 
 include(CMakePackageConfigHelpers)

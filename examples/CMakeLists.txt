@@ -7,3 +7,6 @@ function (add_example TGT)
 endfunction ()
 
 add_example(playground)
+add_example(elo_zoo)
+add_example(match)
+add_example(tairitsu)

@@ -36,6 +36,7 @@ namespace flr
     };
 
     [[nodiscard]] FLUORINE_API std::string to_string(Coords coords);
+    [[nodiscard]] FLUORINE_API Coords parse_coords(std::string_view str);
 
     enum class Color : bool
     {

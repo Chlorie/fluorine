@@ -1,7 +1,6 @@
-#include "fluorine/evaluation/endgame_solver.h"
+#include "fluorine/evaluation/midgame_searcher.h"
 
 #include <cmath>
-#include <clu/scope.h>
 #include <clu/static_vector.h>
 
 #include "../utils/bit.h"
@@ -11,10 +10,8 @@ namespace flr
     namespace
     {
         constexpr int max_move_ordering_depth = 4;
-        constexpr int min_negascout_depth = 6;
+        constexpr int min_negascout_depth = 4;
 
-        // Convert a bitboard of moves into a vector of move coordinates
-        // Sort the moves by opponent mobility after the move optionally
         auto generate_moves(GameRecord& record, const BitBoard move_mask, const bool sort_moves) noexcept
         {
             using MoveVec = clu::static_vector<Coords, cell_count>;
@@ -42,47 +39,53 @@ namespace flr
         }
     } // namespace
 
-    EndgameSolver::EvalResult EndgameSolver::evaluate(const GameState& state)
+    MidgameSearcher::EvalResult MidgameSearcher::evaluate( //
+        const GameState& state, const Evaluator& evaluator, const int depth)
     {
         nodes_ = 0;
-        record_.reset(state); // No need to reset the transposition table
-        const int depth = state.board.count_empty();
+        eval_ = &evaluator;
+        record_.reset(state);
+        tt_.clear();
         const float res = negascout(-inf, inf, depth, false);
-        return {.traversed_nodes = nodes_, .score = static_cast<int>(res)};
+        return {.traversed_nodes = nodes_, .score = res};
     }
 
-    EndgameSolver::SolveResult EndgameSolver::solve(const GameState& state)
+    MidgameSearcher::SolveResult MidgameSearcher::search( //
+        const GameState& state, const Evaluator& evaluator, const int depth)
     {
+        nodes_ = 0;
+        eval_ = &evaluator;
+        record_.reset(state);
+        tt_.clear();
         if (state.legal_moves == 0)
         {
-            GameState s = state;
-            s.play(Coords::none);
-            const auto [nodes, score] = evaluate(s);
-            return {.traversed_nodes = nodes, .score = -score, .move = Coords::none};
+            record_.play(Coords::none);
+            const float score = -negascout(-inf, inf, depth, false);
+            return {.traversed_nodes = nodes_, .score = score, .move = Coords::none};
         }
         SolveResult res{};
         for (const int move : SetBits{state.legal_moves})
         {
-            GameState s = state;
             const Coords move_coords = static_cast<Coords>(move);
-            s.play(move_coords);
-            const auto [nodes, score] = evaluate(s);
-            res.traversed_nodes += nodes;
-            if (-score > res.score)
+            record_.play(move_coords);
+            if (const float score = -negascout(-inf, -res.score, depth - 1, false); //
+                score > res.score)
             {
-                res.score = -score;
+                res.score = score;
                 res.move = move_coords;
             }
+            record_.undo();
         }
+        res.traversed_nodes = nodes_;
         return res;
     }
 
-    float EndgameSolver::negamax(float alpha, const float beta, const int depth, const bool passed)
+    float MidgameSearcher::negamax(float alpha, const float beta, const int depth, const bool passed)
     {
         nodes_++;
-        const GameState state = record_.current();
+        const GameState state = record_.current_canonical();
         if (depth == 0)
-            return static_cast<float>(state.disk_difference());
+            return eval_->evaluate(state.board);
         const BitBoard moves = state.legal_moves;
         if (moves == 0)
         {
@@ -93,7 +96,7 @@ namespace flr
             record_.undo();
             return score;
         }
-        for (const auto move : generate_moves(record_, moves, depth >= max_move_ordering_depth))
+        for (const auto move : generate_moves(record_, moves, false))
         {
             record_.play(move);
             const float score = -negamax(-beta, -alpha, depth - 1, false);
@@ -108,16 +111,15 @@ namespace flr
         return alpha;
     }
 
-    float EndgameSolver::negascout(float alpha, float beta, const int depth, const bool passed)
+    float MidgameSearcher::negascout(float alpha, float beta, const int depth, const bool passed)
     {
         if (depth < min_negascout_depth)
             return negamax(alpha, beta, depth, passed);
         nodes_++;
         const GameState state = record_.current_canonical();
-        const int lookahead = static_cast<int>(state.current);
-        const std::size_t hash = TranspositionTable::hash(state.board, lookahead);
+        const std::size_t hash = TranspositionTable::hash(state.board, depth);
         Bounds bounds{};
-        if (const Bounds* ptr = tt_.try_load(state.board, lookahead, hash))
+        if (const Bounds* ptr = tt_.try_load(state.board, depth, hash))
         {
             bounds = *ptr;
             if (bounds.upper <= alpha) // alpha-cut
@@ -134,18 +136,18 @@ namespace flr
         const auto add_tt_entry = [&]
         {
             if (score <= alpha)
-                tt_.store(state.board, lookahead, {bounds.lower, score}, hash);
+                tt_.store(state.board, depth, {bounds.lower, score}, hash);
             else if (score >= beta)
-                tt_.store(state.board, lookahead, {score, bounds.upper}, hash);
+                tt_.store(state.board, depth, {score, bounds.upper}, hash);
             else
-                tt_.store(state.board, lookahead, score, hash);
+                tt_.store(state.board, depth, score, hash);
         };
         if (moves == 0) // Pass
         {
             if (passed)
             {
                 score = static_cast<float>(state.final_score());
-                tt_.store(state.board, lookahead, score, hash);
+                tt_.store(state.board, depth, score, hash);
                 return score;
             }
             record_.play(Coords::none);

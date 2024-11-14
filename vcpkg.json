@@ -2,7 +2,7 @@
     "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
     "name": "fluorine",
     "version-string": "0.1.0",
-    "dependencies": [ "clu" ],
+    "dependencies": [ "clu", "xsimd" ],
     "features": {
         "build-tests": {
             "description": "Build unit tests",

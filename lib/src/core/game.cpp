@@ -20,11 +20,11 @@ namespace flr
         consteval auto generate_lines() noexcept
         {
             std::array<std::array<BitBoard, 4>, cell_count> res;
-            for (int i = 0; i < cell_count; i++)
+            for (std::size_t i = 0; i < cell_count; i++)
             {
                 auto& arr = res[i];
                 arr[0] = arr[1] = arr[2] = arr[3] = 1ull << i;
-                for (int j = 0; j < board_length - 1; j++)
+                for (std::size_t j = 0; j < board_length - 1; j++)
                 {
                     arr[0] |= shift_west(arr[0]) | shift_east(arr[0]);
                     arr[1] |= (arr[1] << 8) | (arr[1] >> 8);
@@ -45,7 +45,7 @@ namespace flr
         consteval auto generate_pos_in_lines() noexcept
         {
             std::array<std::array<std::uint8_t, 4>, cell_count> res;
-            for (int i = 0; i < cell_count; i++)
+            for (std::size_t i = 0; i < cell_count; i++)
             {
                 const auto r = static_cast<std::uint8_t>(i / 8);
                 const auto c = static_cast<std::uint8_t>(i % 8);
@@ -66,7 +66,7 @@ namespace flr
         consteval auto generate_outflanks() noexcept
         {
             std::array<std::array<BitRow, (1 << board_length)>, board_length> res{};
-            for (int i = 0; i < board_length; i++)
+            for (unsigned i = 0; i < board_length; i++)
             {
                 const BitRow bit = 1 << i;
                 for (unsigned j = 0; j < (1 << board_length); j++)
@@ -100,7 +100,7 @@ namespace flr
         consteval auto generate_flips() noexcept
         {
             std::array<std::array<BitRow, (1 << board_length)>, board_length> res{};
-            for (int i = 0; i < board_length; i++)
+            for (unsigned i = 0; i < board_length; i++)
             {
                 const BitRow bit = 1 << i;
                 for (unsigned j = 0; j < (1 << board_length); j++)
@@ -138,8 +138,8 @@ namespace flr
         BitBoard find_flips(const int placed, const BitBoard self, const BitBoard opponent) noexcept
         {
             BitBoard flips = 0;
-            const auto& lines = line_table[placed];
-            const auto& pos = pos_in_line_table[placed];
+            const auto& lines = line_table[static_cast<std::size_t>(placed)];
+            const auto& pos = pos_in_line_table[static_cast<std::size_t>(placed)];
             clu::static_for<0, 4>(
                 [&](const std::size_t i)
                 {
@@ -171,6 +171,27 @@ namespace flr
         GameState res{.current = color, .board = board, .legal_moves = 0};
         res.legal_moves = res.board.find_legal_moves(res.current);
         return res;
+    }
+
+    void GameState::mirror_main_diagonal() noexcept
+    {
+        board.black = flr::mirror_main_diagonal(board.black);
+        board.white = flr::mirror_main_diagonal(board.white);
+        legal_moves = flr::mirror_main_diagonal(legal_moves);
+    }
+
+    void GameState::mirror_anti_diagonal() noexcept
+    {
+        board.black = flr::mirror_anti_diagonal(board.black);
+        board.white = flr::mirror_anti_diagonal(board.white);
+        legal_moves = flr::mirror_anti_diagonal(legal_moves);
+    }
+
+    void GameState::rotate_180() noexcept
+    {
+        board.black = flr::rotate_180(board.black);
+        board.white = flr::rotate_180(board.white);
+        legal_moves = flr::rotate_180(legal_moves);
     }
 
     void GameState::play(const Coords coords) noexcept

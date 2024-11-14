@@ -18,6 +18,16 @@ namespace flr
             std::string_view repr, char black = 'X', char white = 'O', char space = '-');
         [[nodiscard]] static GameState from_board_and_color(const Board& board, Color color) noexcept;
 
+        [[nodiscard]] constexpr BitBoard self() const noexcept
+        {
+            return current == Color::black ? board.black : board.white;
+        }
+
+        [[nodiscard]] constexpr BitBoard opponent() const noexcept
+        {
+            return current == Color::white ? board.black : board.white;
+        }
+
         constexpr void swap_colors() noexcept
         {
             board.swap_colors();
@@ -29,6 +39,12 @@ namespace flr
             if (current == Color::white)
                 swap_colors();
         }
+
+        void mirror_main_diagonal() noexcept;
+        void mirror_anti_diagonal() noexcept;
+        void rotate_180() noexcept;
+
+        constexpr Board canonical_board() const noexcept { return {self(), opponent()}; }
 
         [[nodiscard]] constexpr int disk_difference() const noexcept
         {
@@ -43,7 +59,7 @@ namespace flr
             const int empty = static_cast<int>(cell_count) - black - white;
             const int diff = black - white;
             // Empty cells are counted towards the winner when the game ends
-            return sign_of(current) * (diff + (diff > 0 ? empty : -empty));
+            return sign_of(current) * (diff + (diff > 0 ? empty : diff < 0 ? -empty : 0));
         }
 
         void play(Coords coords) noexcept;
@@ -73,8 +89,16 @@ namespace flr
                 state.canonicalize();
         }
 
-        const GameState& current() const noexcept { return states_.back(); }
-        const auto& states() const noexcept { return states_; }
+        [[nodiscard]] const GameState& current() const noexcept { return states_.back(); }
+
+        [[nodiscard]] GameState current_canonical() const noexcept
+        {
+            GameState state = states_.back();
+            state.canonicalize();
+            return state;
+        }
+
+        [[nodiscard]] const auto& states() const noexcept { return states_; }
 
     private:
         std::vector<GameState> states_;

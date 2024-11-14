@@ -7,7 +7,7 @@
 	"registries": [
 		{
 			"kind": "git",
-			"baseline": "169c2607293b8f77494cfd4ad2e16f9f08936102",
+			"baseline": "6ffcadbf9db8ce212917497560175cdcdcfba4a5",
 			"repository": "https://github.com/Chlorie/vcpkg-ports",
 			"packages": [
 				"clu"

@@ -1,6 +1,5 @@
 #include "fluorine/evaluation/transposition_table.h"
 
-#include <algorithm>
 #include <clu/hash.h>
 
 namespace flr
@@ -38,16 +37,10 @@ namespace flr
         return &pair.bounds;
     }
 
-    void TranspositionTable::clear() noexcept
-    {
-        static constexpr std::size_t size_bytes = sizeof(Pair) * table_size;
-        std::memset(data_.data(), 0, size_bytes);
-    }
-
-    std::size_t TranspositionTable::size() noexcept
+    std::size_t TranspositionTable::size() const noexcept
     {
         static constexpr Board empty_board{.black = 0, .white = 0};
-        return std::ranges::count_if(
-            data_, [](const State& state) { return state.board != empty_board; }, &Pair::state);
+        return static_cast<std::size_t>(std::ranges::count_if(
+            data_, [](const State& state) { return state.board != empty_board; }, &Entry::state));
     }
 } // namespace flr

@@ -1,6 +1,7 @@
 #include "fluorine/utils/tui.h"
 
 #include <cassert>
+#include <cmath>
 #include <clu/text/print.h>
 
 namespace flr
@@ -14,10 +15,10 @@ namespace flr
         static constexpr std::string_view black = "⚫";
         static constexpr std::string_view white = "⚪";
         clu::print_nonformatted("　ＡＢＣＤＥＦＧＨ\n");
-        for (int i = 0; i < board_length; i++)
+        for (std::size_t i = 0; i < board_length; i++)
         {
             clu::print("{}\x1b[42m", numbers[i]);
-            for (int j = 0; j < board_length; j++)
+            for (std::size_t j = 0; j < board_length; j++)
             {
                 const BitBoard bit = 1ull << (i * board_length + j);
                 if (bit & highlight)
@@ -91,7 +92,7 @@ namespace flr
     void ProgressBar::display_title() const
     {
         const std::size_t digit = static_cast<std::size_t>(std::floor(std::log10(total_))) + 1;
-        clu::println("{} - {:{}}/{:{}}\n{}", name_, current_, digit, total_, digit, msg_);
+        clu::println("{} - {:{}}/{:{}}\n\x1b[K{}", name_, current_, digit, total_, digit, msg_);
     }
 
     void ProgressBar::display_time() const
@@ -115,8 +116,9 @@ namespace flr
         const std::size_t ticks = current_ * total_ticks / total_;
         const std::size_t full = ticks / divisions;
         if (const std::size_t partial = ticks % divisions; partial == 0)
-            clu::println("[{:█>{}}{:{}}]", "", full, "", bar_width - full);
+            clu::println("\x1b[37m\x1b[100m{:█>{}}{:{}}\x1b[0m", "", full, "", bar_width - full);
         else
-            clu::println("[{:█>{}}{}{:{}}]", "", full, block_chars[partial], "", bar_width - full - 1);
+            clu::println("\x1b[37m\x1b[100m{:█>{}}{}{:{}}\x1b[0m", //
+                "", full, block_chars[partial], "", bar_width - full - 1);
     }
 } // namespace flr
