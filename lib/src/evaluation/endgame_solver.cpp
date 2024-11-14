@@ -1,9 +1,9 @@
 #include "fluorine/evaluation/endgame_solver.h"
 
-#include <cmath>
 #include <clu/scope.h>
 #include <clu/static_vector.h>
 
+#include "iterate_moves.h"
 #include "../utils/bit.h"
 
 namespace flr
@@ -12,26 +12,6 @@ namespace flr
     {
         constexpr int min_negascout_depth = 6;
         constexpr int int_inf = cell_count + 1;
-
-        // Convert a bitboard of moves into a vector of move coordinates
-        // Sort the moves by opponent mobility after the move optionally
-        auto generate_moves(GameRecord& record, const BitBoard move_mask) noexcept
-        {
-            clu::static_vector<std::pair<Coords, int>, cell_count> weighted_moves;
-            for (const int bit : SetBits{move_mask})
-            {
-                const auto move = static_cast<Coords>(bit);
-                record.play(move);
-                const int weight = std::popcount(record.current().legal_moves);
-                weighted_moves.emplace_back(move, weight);
-                record.undo();
-            }
-            std::ranges::sort(weighted_moves, std::less{}, &std::pair<Coords, int>::second);
-            clu::static_vector<Coords, cell_count> res;
-            for (const auto move : weighted_moves | std::views::keys)
-                res.emplace_back(static_cast<Coords>(move));
-            return res;
-        }
     } // namespace
 
     EndgameSolver::EvalResult EndgameSolver::evaluate(const GameState& state)
@@ -174,7 +154,7 @@ namespace flr
             add_tt_entry();
             return score;
         }
-        for (const Coords move : generate_moves(record_, moves))
+        for (const Coords move : sort_moves_wrt_mobility(state))
         {
             record_.play(move);
             const int lower = std::max(alpha, score);

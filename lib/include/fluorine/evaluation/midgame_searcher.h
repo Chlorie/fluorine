@@ -1,5 +1,7 @@
 #pragma once
 
+#include <clu/static_vector.h>
+
 #include "transposition_table.h"
 #include "evaluator.h"
 #include "../core/game.h"
@@ -31,11 +33,13 @@ namespace flr
     private:
         std::size_t nodes_ = 0;
         GameRecord record_;
+        GameRecord temp_record_;
         TranspositionTable tt_;
         const Evaluator* eval_ = nullptr;
 
         float negamax(float alpha, float beta, int depth, bool passed);
-        float negascout(float alpha, float beta, int depth, bool passed);
+        float negascout(float alpha, float beta, int depth, bool passed, bool needs_shallow);
+        clu::static_vector<Coords, cell_count> sort_moves(const GameState& state, float alpha, float beta, int depth);
     };
 } // namespace flr
 
