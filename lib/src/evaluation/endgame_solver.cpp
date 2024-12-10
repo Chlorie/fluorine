@@ -3,6 +3,7 @@
 #include <clu/static_vector.h>
 
 #include "iterate_moves.h"
+#include "../core/flip.h"
 #include "../utils/bit.h"
 
 namespace flr
@@ -16,67 +17,58 @@ namespace flr
     EndgameSolver::EvalResult EndgameSolver::evaluate(const GameState& state)
     {
         nodes_ = 0;
-        record_.reset(state); // No need to reset the transposition table
         const int depth = state.board.count_empty();
-        const int res = negascout(-int_inf, int_inf, depth, false);
+        const int res = negascout(state, -int_inf, int_inf, depth, false);
         return {.traversed_nodes = nodes_, .score = static_cast<int>(res)};
     }
 
     EndgameSolver::SolveResult EndgameSolver::solve(const GameState& state)
     {
         nodes_ = 0;
-        record_.reset(state);
         const int depth = state.board.count_empty();
         if (state.legal_moves == 0)
         {
-            record_.play(Coords::none);
-            const int score = -negascout(-int_inf, int_inf, depth, true);
+            const int score = -negascout(state.play_copied(Coords::none), -int_inf, int_inf, depth, true);
             return {.traversed_nodes = nodes_, .score = static_cast<int>(score), .move = Coords::none};
         }
         SolveResult res;
         for (const int move : SetBits{state.legal_moves})
         {
             const Coords move_coords = static_cast<Coords>(move);
-            record_.play(move_coords);
-            if (const auto score = -negascout(-int_inf, -res.score, depth - 1, false); //
+            if (const auto score = -negascout(state.play_copied(move_coords), //
+                    -int_inf, -res.score, depth - 1, false); //
                 score > res.score)
             {
                 res.score = score;
                 res.move = move_coords;
             }
-            record_.undo();
         }
         res.traversed_nodes = nodes_;
         return res;
     }
 
-    int EndgameSolver::negamax(int alpha, const int beta, const int depth, const bool passed)
+    int EndgameSolver::negamax(const GameState& state, int alpha, const int beta, const int depth, const bool passed)
     {
         switch (depth)
         {
-            case 0: nodes_++; return record_.current().disk_difference();
-            case 1: return negamax_last(passed);
+            case 0: nodes_++; return state.disk_difference();
+            case 1: return negamax_last(state, passed);
             default:;
         }
         nodes_++;
-        const GameState state = record_.current();
         const BitBoard moves = state.legal_moves;
         if (moves == 0)
         {
             if (passed)
                 return state.final_score();
-            record_.play(Coords::none);
-            const int score = -negamax(-beta, -alpha, depth, true);
-            record_.undo();
+            const int score = -negamax(state.play_copied(Coords::none), -beta, -alpha, depth, true);
             return score;
         }
         for (const auto move : SetBits{moves})
         {
-            const Coords move_coords = static_cast<Coords>(move);
-            record_.play(move_coords);
-            const int score = -negamax(-beta, -alpha, depth - 1, false);
-            record_.undo();
-            if (score > alpha)
+            if (const int score = -negamax(state.play_copied(static_cast<Coords>(move)), //
+                    -beta, -alpha, depth - 1, false);
+                score > alpha)
             {
                 if (score >= beta)
                     return score;
@@ -86,32 +78,28 @@ namespace flr
         return alpha;
     }
 
-    int EndgameSolver::negamax_last(const bool passed)
+    int EndgameSolver::negamax_last(const GameState& state, const bool passed)
     {
         nodes_++;
-        const GameState state = record_.current();
         const BitBoard moves = state.legal_moves;
         if (moves == 0)
         {
             if (passed)
                 return state.final_score();
-            record_.play(Coords::none);
-            const int score = -negamax_last(true);
-            record_.undo();
+            const int score = -negamax_last(state.play_copied(Coords::none), true);
             return score;
         }
-        record_.play(static_cast<Coords>(std::countr_zero(moves)));
-        const int score = -record_.current().disk_difference();
-        record_.undo();
-        return score;
+        const auto board = state.canonical_board();
+        const int flips = count_flips(std::countr_zero(moves), board.black, board.white);
+        return board.disk_difference() + 1 + 2 * flips;
     }
 
-    int EndgameSolver::negascout(int alpha, int beta, const int depth, const bool passed)
+    int EndgameSolver::negascout(GameState state, int alpha, int beta, const int depth, const bool passed)
     {
         if (depth < min_negascout_depth)
-            return negamax(alpha, beta, depth, passed);
+            return negamax(state, alpha, beta, depth, passed);
         nodes_++;
-        const GameState state = record_.current_canonical();
+        state.canonicalize();
         const int lookahead = static_cast<int>(state.current);
         const std::size_t hash = TranspositionTable::hash(state.board);
         Bounds bounds{-static_cast<float>(int_inf), static_cast<float>(int_inf)};
@@ -147,27 +135,24 @@ namespace flr
                 tt_.store(state.board, lookahead, static_cast<float>(score), hash);
                 return score;
             }
-            record_.play(Coords::none);
-            score = -negascout(-beta, -alpha, depth, true);
-            record_.undo();
+            score = -negascout(state.play_copied(Coords::none), -beta, -alpha, depth, true);
             add_tt_entry();
             return score;
         }
         for (const Coords move : sort_moves_wrt_mobility(state))
         {
-            record_.play(move);
+            const auto next = state.play_copied(move);
             const int lower = std::max(alpha, score);
             int new_score;
             if (lower == -int_inf)
-                new_score = -negascout(-beta, int_inf, depth - 1, false);
+                new_score = -negascout(next, -beta, int_inf, depth - 1, false);
             else
             {
                 // Search with a null window
-                new_score = -negascout(-lower - 1, -lower, depth - 1, false);
+                new_score = -negascout(next, -lower - 1, -lower, depth - 1, false);
                 if (lower < new_score && new_score < beta) // Re-search
-                    new_score = -negascout(-beta, -lower, depth - 1, false);
+                    new_score = -negascout(next, -beta, -lower, depth - 1, false);
             }
-            record_.undo();
             if (new_score > score)
             {
                 score = new_score;

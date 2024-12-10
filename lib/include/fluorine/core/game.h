@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#include <clu/static_vector.h>
 
 #include "board.h"
 
@@ -41,6 +40,13 @@ namespace flr
                 swap_colors();
         }
 
+        [[nodiscard]] constexpr GameState canonicalized() const noexcept
+        {
+            GameState res = *this;
+            res.canonicalize();
+            return res;
+        }
+
         void mirror_main_diagonal() noexcept;
         void mirror_anti_diagonal() noexcept;
         void rotate_180() noexcept;
@@ -64,6 +70,13 @@ namespace flr
         }
 
         void play(Coords coords) noexcept;
+
+        [[nodiscard]] GameState play_copied(const Coords coords) const noexcept
+        {
+            GameState res = *this;
+            res.play(coords);
+            return res;
+        }
     };
 
     class FLUORINE_API GameRecord final

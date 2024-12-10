@@ -30,12 +30,11 @@ namespace flr
 
     private:
         std::size_t nodes_ = 0;
-        GameRecord record_;
         TranspositionTable tt_;
 
-        int negamax(int alpha, int beta, int depth, bool passed);
-        int negamax_last(bool passed);
-        int negascout(int alpha, int beta, int depth, bool passed);
+        int negamax(const GameState& state, int alpha, int beta, int depth, bool passed);
+        int negamax_last(const GameState& state, bool passed);
+        int negascout(GameState state, int alpha, int beta, int depth, bool passed);
     };
 } // namespace flr
 
