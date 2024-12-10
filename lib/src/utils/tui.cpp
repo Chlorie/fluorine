@@ -4,6 +4,8 @@
 #include <cmath>
 #include <clu/text/print.h>
 
+#include "fluorine/utils/humanize.h"
+
 namespace flr
 {
     void clear_screen() { clu::print_nonformatted("\033[H\033[J"); }
@@ -100,11 +102,11 @@ namespace flr
         using namespace std::literals;
         const auto all = now_ - start_;
         const auto one = now_ - prev_update_;
-        clu::print("All: {:>8g}ms - This: {:>8g}ms - Avg: ", all / 1.0ms, one / 1.0ms);
+        clu::print("All: {} - This: {} - Avg: ", humanize(all), humanize(one));
         if (current_ == 0)
             clu::println("N/A");
         else
-            clu::println("{:>8g}ms", (all / current_) / 1.0ms);
+            clu::println("{}", humanize(all / current_));
     }
 
     void ProgressBar::display_bar() const

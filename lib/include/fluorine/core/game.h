@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <clu/static_vector.h>
 
 #include "board.h"
 

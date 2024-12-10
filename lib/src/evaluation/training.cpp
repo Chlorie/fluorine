@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <thread>
+#include <array>
 #include <clu/random.h>
 #include <clu/text/print.h>
 
@@ -9,20 +10,12 @@
 #include "fluorine/arena/random_player.h"
 #include "fluorine/utils/tui.h"
 #include "fluorine/evaluation/midgame_searcher.h"
+#include "fluorine/evaluation/endgame_solver.h"
 
 namespace flr
 {
     namespace
     {
-        GameState random_initial_state(const std::size_t moves)
-        {
-            GameState state;
-            RandomPlayer rand;
-            for (std::size_t i = 0; i < moves; i++)
-                state.play(rand.get_move(state));
-            return state;
-        }
-
         class DatasetGenerator
         {
         public:
@@ -49,6 +42,8 @@ namespace flr
             }
 
         private:
+            using Histogram = std::array<std::size_t, cell_count>;
+
             const Evaluator* eval_;
             DataGenerationOptions opt_;
             std::optional<ProgressBar> bar_;
@@ -63,11 +58,12 @@ namespace flr
                     rng.seed(*opt_.seed + worker_id);
                 Dataset local;
                 MidgameSearcher searcher;
+                EndgameSolver solver;
                 std::bernoulli_distribution dist(opt_.epsilon);
                 for (std::size_t i = 0; i < total; i++)
                 {
                     const std::size_t old_dataset_size = local.size();
-                    auto state = random_initial_state(opt_.initial_random_moves);
+                    GameState state;
                     while (true)
                     {
                         if (state.legal_moves == 0)
@@ -77,10 +73,34 @@ namespace flr
                                 break;
                             continue;
                         }
-                        const auto [_, score, move] = searcher.search(state, *eval_, opt_.tree_search_depth);
-                        local.emplace_back(state.canonical_board(), score);
-                        std::ranges::copy(searcher.transposition_table().entries(), std::back_inserter(local));
-                        state.play(dist(rng) ? RandomPlayer{}.get_move(state) : move);
+                        if (const auto totals = state.board.count_total();
+                            static_cast<int>(cell_count) - totals <= opt_.endgame_solve_depth)
+                        {
+                            const std::size_t middle_size = local.size();
+                            const auto [_, score, move] = solver.solve(state);
+                            local.emplace_back(state.canonical_board(), static_cast<float>(score));
+                            std::ranges::copy(solver.transposition_table().entries(), std::back_inserter(local));
+                            solver.clear_transposition_table();
+                            if (!opt_.balance_phases)
+                                break;
+                            const auto middle =
+                                std::span(local).subspan(old_dataset_size, middle_size - old_dataset_size);
+                            const auto end = std::span(local).subspan(middle_size);
+                            auto hist = data_histogram(middle);
+                            const auto target = balance_target(hist);
+                            std::ranges::shuffle(end, rng);
+                            const DataPoint* ptr = balance_phases(hist, target, end);
+                            local.erase(ptr - local.data() + local.begin(), local.end());
+                            break;
+                        }
+                        else
+                        {
+                            const auto [_, score, move] = searcher.search(state, *eval_, opt_.midgame_search_depth);
+                            local.emplace_back(state.canonical_board(), score);
+                            std::ranges::copy(searcher.transposition_table().entries(), std::back_inserter(local));
+                            const auto use_rand = totals - 4 < opt_.initial_random_moves || dist(rng);
+                            state.play(use_rand ? RandomPlayer{}.get_move(state) : move);
+                        }
                     }
                     update_progress(worker_id, local.size() - old_dataset_size);
                 }
@@ -96,6 +116,39 @@ namespace flr
                 size_tracker_ += increment;
                 bar_->set_message(std::format("[Worker {:3}] Accumulated dataset size: {}", worker_id, size_tracker_));
                 bar_->tick();
+            }
+
+            std::size_t balance_target(const Histogram& hist) const noexcept
+            {
+                std::size_t total = 0;
+                const std::size_t start = 4 + static_cast<std::size_t>(opt_.initial_random_moves);
+                const std::size_t stop = cell_count - static_cast<std::size_t>(opt_.endgame_solve_depth);
+                for (std::size_t i = start; i < stop; i++)
+                    total += hist[i];
+                return total / (stop - start);
+            }
+
+            const DataPoint* balance_phases(
+                Histogram& hist, const std::size_t target_count, const std::span<DataPoint> data) const
+            {
+                DataPoint* last = data.data();
+                for (DataPoint& dp : data)
+                {
+                    const auto disks = static_cast<std::size_t>(dp.first.count_total());
+                    if (hist[disks] >= target_count)
+                        continue;
+                    hist[disks]++;
+                    std::swap(dp, *last++);
+                }
+                return last;
+            }
+
+            static Histogram data_histogram(const std::span<const DataPoint> data)
+            {
+                Histogram hist{};
+                for (const auto& board : data | std::views::keys)
+                    hist[static_cast<std::size_t>(board.count_total())] += 1;
+                return hist;
             }
         };
 

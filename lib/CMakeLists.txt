@@ -28,11 +28,11 @@ target_add_sources(fluorine "src/"
     "evaluation/midgame_searcher.cpp"
     "evaluation/transposition_table.cpp"
     "evaluation/training.cpp"
+    "utils/perft.cpp"
     "utils/tui.cpp"
 )
 
 find_package(clu CONFIG REQUIRED)
-find_package(xsimd CONFIG REQUIRED)
 
 target_set_options(fluorine PRIVATE)
 target_set_warnings(fluorine PRIVATE)
@@ -60,8 +60,6 @@ PUBLIC
 target_link_libraries(fluorine
 PUBLIC
     clu::clu
-PRIVATE
-    xsimd
 )
 
 include(CMakePackageConfigHelpers)

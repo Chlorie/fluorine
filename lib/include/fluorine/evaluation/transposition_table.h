@@ -53,7 +53,7 @@ namespace flr
     private:
         struct State final
         {
-            Board board{.black = 0, .white = 0}; // Intended zero init
+            Board board = Board::empty; // Intended zero init
             int depth = 0;
         };
 
@@ -63,7 +63,7 @@ namespace flr
             Bounds bounds;
         };
 
-        static constexpr std::size_t table_size = 1 << 20;
+        static constexpr std::size_t table_size = 1 << 22;
         std::vector<Entry> data_;
     };
 } // namespace flr

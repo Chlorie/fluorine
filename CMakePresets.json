@@ -16,7 +16,7 @@
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "True",
                 "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-                "VCPKG_MANIFEST_FEATURES": "build-tests",
+                "VCPKG_MANIFEST_FEATURES": "build-tests;avx2",
                 "FLUORINE_BUILD_TESTS": true,
                 "FLUORINE_ENABLE_AVX2": true
             }

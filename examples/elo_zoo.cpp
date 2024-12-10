@@ -107,15 +107,26 @@ namespace
         void load_players()
         {
             players_.push_back(Player{.name = "rand", .player = std::make_unique<flr::RandomPlayer>()});
-            for (const auto& entry : fs::directory_iterator(fs::path(".")))
+            const fs::path config_path = "./players.txt";
+            if (!exists(config_path))
+                throw std::runtime_error("Player config file (players.txt) not found");
+            std::ifstream config_file(config_path);
+            std::string line;
+            while (std::getline(config_file, line))
             {
-                const auto& path = entry.path();
-                if (path.extension() != ".dat")
+                if (line.empty())
                     continue;
-                auto lpe = flr::LinearPatternEvaluator::load(path);
+                std::istringstream iss(line);
+                std::string name;
+                fs::path weights_path;
+                int mid_depth, end_depth;
+                iss >> name >> weights_path >> mid_depth >> end_depth;
+                if (!exists(weights_path))
+                    throw std::runtime_error(std::format("Weights file does not exist: {}", weights_path.string()));
+                auto eval = flr::LinearPatternEvaluator::load(weights_path);
                 players_.push_back(Player{
-                    .name = path.stem().string(), //
-                    .player = std::make_unique<flr::SearchingPlayer>(std::move(lpe), 6, 8) //
+                    .name = std::move(name), //
+                    .player = std::make_unique<flr::SearchingPlayer>(std::move(eval), mid_depth, end_depth) //
                 });
             }
         }
@@ -217,23 +228,28 @@ namespace
             const auto& lengthiest_player =
                 *std::ranges::max_element(players_, std::less{}, [](const Player& p) { return p.name.size(); });
             const std::size_t max_name_length = lengthiest_player.name.size();
-            clu::print("{:{}}   \x1b[1;34mELO\x1b[0m  |", "", max_name_length);
+            clu::print("{:{}}   \x1b[1;34mELO\x1b[0m  |\x1b[1;34m", "", max_name_length);
             for (const auto& p : players_)
             {
-                clu::print_nonformatted(p.player ? "\x1b[1;34m" : "\x1b[1;30m");
+                if (!p.player)
+                    continue;
                 if (p.name.size() > max_column_width - 1)
                     clu::print(" {}... ", p.name.substr(0, max_column_width - 5));
                 else
                     clu::print("{:^{}}", p.name, max_column_width);
-                clu::print_nonformatted("\x1b[0m");
             }
-            clu::println("\n{:->{}}+{:->{}}", "", max_name_length + 8, "", max_column_width * players_.size());
+            clu::print_nonformatted("\x1b[0m");
+            const std::size_t n_available_players =
+                std::ranges::count_if(players_, [](const Player& p) { return p.player != nullptr; });
+            clu::println("\n{:->{}}+{:->{}}", "", max_name_length + 8, "", max_column_width * n_available_players);
             for (std::size_t i = 0; i < players_.size(); i++)
             {
                 const auto& p = players_[i];
                 clu::print("\x1b[1;{}m{:{}} \x1b[0m {:>4.0f}  |", p.player ? 34 : 30, p.name, max_name_length, p.elo);
                 for (std::size_t j = 0; j < players_.size(); j++)
                 {
+                    if (!players_[j].player)
+                        continue;
                     if (i == j)
                     {
                         clu::print("\x1b[1;30m{:^{}}\x1b[0m", "-", max_column_width);
@@ -417,8 +433,14 @@ namespace
 } // namespace
 
 int main()
+try
 {
     Results res;
     while (true)
         res.run();
+}
+catch (const std::exception& e)
+{
+    clu::println("Error due to exception: {}", e.what());
+    return 1;
 }

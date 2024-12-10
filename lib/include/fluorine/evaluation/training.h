@@ -16,8 +16,10 @@ namespace flr
     struct DataGenerationOptions
     {
         std::size_t total_games = 100;
-        int tree_search_depth = 8;
-        std::size_t initial_random_moves = 6;
+        int midgame_search_depth = 8;
+        int endgame_solve_depth = 16;
+        bool balance_phases = true;
+        int initial_random_moves = 6;
         float epsilon = 0.01f; //< Probability of random move
         std::size_t worker_count = 1;
         std::optional<std::uint64_t> seed = std::nullopt;

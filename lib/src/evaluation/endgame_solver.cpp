@@ -1,6 +1,5 @@
 #include "fluorine/evaluation/endgame_solver.h"
 
-#include <clu/scope.h>
 #include <clu/static_vector.h>
 
 #include "iterate_moves.h"
