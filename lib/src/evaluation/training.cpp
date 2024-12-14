@@ -79,7 +79,12 @@ namespace flr
                             const std::size_t middle_size = local.size();
                             const auto [_, score, move] = solver.solve(state);
                             local.emplace_back(state.canonical_board(), static_cast<float>(score));
-                            std::ranges::copy(solver.transposition_table().entries(), std::back_inserter(local));
+                            std::ranges::transform(solver.transposition_table().entries(), std::back_inserter(local),
+                                [](const std::pair<Board, Bounds<int>>& pair) noexcept -> DataPoint
+                                {
+                                    const auto [low, high] = pair.second;
+                                    return {pair.first, {static_cast<float>(low), static_cast<float>(high)}};
+                                });
                             solver.clear_transposition_table();
                             if (!opt_.balance_phases)
                                 break;

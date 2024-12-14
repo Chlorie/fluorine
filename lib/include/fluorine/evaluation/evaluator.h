@@ -23,7 +23,7 @@ namespace flr
         [[nodiscard]] virtual float evaluate(const Board& board) const = 0;
     };
 
-    using DataPoint = std::pair<Board, Bounds>;
+    using DataPoint = std::pair<Board, Bounds<float>>;
     using Dataset = std::vector<DataPoint>;
 
     class FLUORINE_API LearnableEvaluator : public Evaluator

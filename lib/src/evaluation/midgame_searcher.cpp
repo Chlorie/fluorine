@@ -96,9 +96,9 @@ namespace flr
             return negamax(alpha, beta, depth, passed);
         nodes_++;
         const GameState state = record_.current_canonical();
-        const std::size_t hash = TranspositionTable::hash(state.board);
-        Bounds bounds{};
-        if (const Bounds* ptr = tt_.try_load(state.board, depth, hash))
+        const std::size_t hash = tt_.hash(state.board);
+        Bounds<float> bounds{};
+        if (const auto* ptr = tt_.try_load(state.board, depth, hash))
         {
             bounds = *ptr;
             if (bounds.upper <= alpha) // alpha-cut

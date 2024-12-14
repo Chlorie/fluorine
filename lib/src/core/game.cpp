@@ -1,8 +1,6 @@
 #include "fluorine/core/game.h"
 
-#include <array>
 #include <stdexcept>
-#include <clu/static_for.h>
 
 #include "flip.h"
 #include "../utils/bit.h"

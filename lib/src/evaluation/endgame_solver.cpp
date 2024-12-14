@@ -101,12 +101,12 @@ namespace flr
         nodes_++;
         state.canonicalize();
         const int lookahead = static_cast<int>(state.current);
-        const std::size_t hash = TranspositionTable::hash(state.board);
-        Bounds bounds{-static_cast<float>(int_inf), static_cast<float>(int_inf)};
-        if (const Bounds* ptr = tt_.try_load(state.board, lookahead, hash))
+        const std::size_t hash = tt_.hash(state.board);
+        Bounds<int> bounds{};
+        if (const auto* ptr = tt_.try_load(state.board, lookahead, hash))
         {
             bounds = *ptr;
-            const int upper = static_cast<int>(bounds.upper), lower = static_cast<int>(bounds.lower);
+            const auto [lower, upper] = bounds;
             if (upper <= alpha) // alpha-cut
                 return upper;
             if (lower >= beta) // beta-cut
@@ -121,18 +121,18 @@ namespace flr
         const auto add_tt_entry = [&]
         {
             if (score <= alpha)
-                tt_.store(state.board, lookahead, {bounds.lower, static_cast<float>(score)}, hash);
+                tt_.store(state.board, lookahead, {bounds.lower, score}, hash);
             else if (score >= beta)
-                tt_.store(state.board, lookahead, {static_cast<float>(score), bounds.upper}, hash);
+                tt_.store(state.board, lookahead, {score, bounds.upper}, hash);
             else
-                tt_.store(state.board, lookahead, static_cast<float>(score), hash);
+                tt_.store(state.board, lookahead, score, hash);
         };
         if (moves == 0) // Pass
         {
             if (passed)
             {
                 score = state.final_score();
-                tt_.store(state.board, lookahead, static_cast<float>(score), hash);
+                tt_.store(state.board, lookahead, score, hash);
                 return score;
             }
             score = -negascout(state.play_copied(Coords::none), -beta, -alpha, depth, true);

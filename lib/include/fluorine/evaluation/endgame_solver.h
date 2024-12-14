@@ -25,12 +25,12 @@ namespace flr
 
         [[nodiscard]] EvalResult evaluate(const GameState& state);
         [[nodiscard]] SolveResult solve(const GameState& state);
-        [[nodiscard]] const TranspositionTable& transposition_table() const noexcept { return tt_; }
+        [[nodiscard]] const auto& transposition_table() const noexcept { return tt_; }
         void clear_transposition_table() noexcept { tt_.clear(); }
 
     private:
         std::size_t nodes_ = 0;
-        TranspositionTable tt_;
+        TranspositionTable<int> tt_;
 
         int negamax(const GameState& state, int alpha, int beta, int depth, bool passed);
         int negamax_last(const GameState& state, bool passed);

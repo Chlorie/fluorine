@@ -10,7 +10,7 @@ FLUORINE_SUPPRESS_EXPORT_WARNING
 
 namespace flr
 {
-    using DataPoint = std::pair<Board, Bounds>;
+    using DataPoint = std::pair<Board, Bounds<float>>;
     using Dataset = std::vector<DataPoint>;
 
     struct DataGenerationOptions

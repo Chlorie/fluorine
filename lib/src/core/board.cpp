@@ -1,7 +1,13 @@
 #include "fluorine/core/board.h"
 
 #include <stdexcept>
+
+#ifndef __AVX2__
 #include <clu/static_for.h>
+#else
+#include <xsimd/xsimd.hpp>
+#include <immintrin.h>
+#endif
 
 #include "../utils/bit.h"
 
@@ -9,9 +15,9 @@ namespace flr
 {
     namespace
     {
+#ifndef __AVX2__
         BitBoard find_legal_moves(const BitBoard self, const BitBoard opponent)
         {
-            const BitBoard empty = ~(self | opponent); // Empty spots
             // Apply masks to opponent bit board to avoid row wrapping in the left/right shifts
             const BitBoard center = opponent & center_6x6; // Center 6x6
             const BitBoard columns = opponent & middle_6files; // Middle 6 columns
@@ -40,8 +46,37 @@ namespace flr
             southwest <<= 7; northeast >>= 7;
             east <<= 1;      west >>= 1;
             // clang-format on
+            const BitBoard empty = ~(self | opponent); // Empty spots
             return (southeast | northwest | south | north | southwest | northeast | east | west) & empty;
         }
+
+#else
+        // Adapted from http://www.amy.hi-ho.ne.jp/okuhara/bitboard.htm
+        BitBoard find_legal_moves(const BitBoard self, const BitBoard opponent)
+        {
+            using BitBoardx4 = xsimd::batch<BitBoard, xsimd::avx2>;
+            using BitBoardx2 = xsimd::batch<BitBoard, xsimd::sse2>;
+            const BitBoardx4 shifts{1, 8, 9, 7}, shifts2{2, 16, 18, 14};
+            const BitBoardx4 mask{middle_6files, ~BitBoard{}, middle_6files, middle_6files};
+            const BitBoardx4 selves(self), opponents = BitBoardx4(opponent) & mask; // Duplicated and masked
+            BitBoardx4 flip_l = opponents & (selves << shifts);
+            BitBoardx4 flip_r = opponents & (selves >> shifts);
+            flip_l |= opponents & (flip_l << shifts);
+            flip_r |= opponents & (flip_r >> shifts);
+            const BitBoardx4 pre_l = opponents & (opponents << shifts);
+            const BitBoardx4 pre_r = pre_l >> shifts;
+            flip_l |= pre_l & (flip_l << shifts2);
+            flip_r |= pre_r & (flip_r >> shifts2);
+            flip_l |= pre_l & (flip_l << shifts2);
+            flip_r |= pre_r & (flip_r >> shifts2);
+            const BitBoardx4 moves4 = (flip_l << shifts) | (flip_r >> shifts);
+            const BitBoardx2 moves_hi2 = _mm256_extracti128_si256(moves4, 1);
+            const BitBoardx2 moves_lo2 = _mm256_castsi256_si128(moves4);
+            BitBoardx2 moves2 = moves_lo2 | moves_hi2;
+            moves2 |= swizzle(moves2, xsimd::batch_constant<BitBoard, xsimd::sse2, 1, 1>{});
+            return _mm_cvtsi128_si64(moves2) & ~(self | opponent); // mask with empties
+        }
+#endif
     } // namespace
 
     std::string to_string(const Coords coords)

@@ -28,13 +28,13 @@ namespace flr
 
         [[nodiscard]] EvalResult evaluate(const GameState& state, const Evaluator& evaluator, int depth);
         [[nodiscard]] SolveResult search(const GameState& state, const Evaluator& evaluator, int depth);
-        [[nodiscard]] const TranspositionTable& transposition_table() const noexcept { return tt_; }
+        [[nodiscard]] const auto& transposition_table() const noexcept { return tt_; }
 
     private:
         std::size_t nodes_ = 0;
         GameRecord record_;
         GameRecord temp_record_;
-        TranspositionTable tt_;
+        TranspositionTable<float> tt_;
         const Evaluator* eval_ = nullptr;
 
         float negamax(float alpha, float beta, int depth, bool passed);
